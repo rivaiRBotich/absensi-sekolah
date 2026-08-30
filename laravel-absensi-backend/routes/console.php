@@ -10,5 +10,5 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command(MarkAlphaAttendance::class)->dailyAt('23:59');
+Schedule::command(MarkAlphaAttendance::class)->dailyAt('08:00');
 Schedule::command(NotifyStudentsNotScanned::class)->everyFifteenMinutes();
