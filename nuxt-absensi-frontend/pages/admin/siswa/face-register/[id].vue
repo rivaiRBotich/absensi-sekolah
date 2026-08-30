@@ -42,7 +42,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-const config = useRuntimeConfig()
+
 definePageMeta({ layout: 'admin' })
 
 const config = useRuntimeConfig()
