@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:3000','http://nuxt.local','https://identification-abc-bend-own.trycloudflare.com'],
+    'allowed_origins' => ['http://localhost:3000','http://nuxt.local','https://absensi.binarytechnusantara.it.com'],
 
     'allowed_origins_patterns' => [],
 

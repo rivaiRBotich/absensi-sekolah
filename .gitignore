@@ -1,0 +1,6 @@
+wa-broadcast/auth/
+wa-broadcast/auth-backup/
+__pycache__/
+venv/
+laravel-absensi-backend/storage/logs/*.log
+laravel-absensi-backend/bootstrap/cache/*.php
