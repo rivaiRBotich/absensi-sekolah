@@ -35,6 +35,15 @@
           >
             📋 <span>Rekap Absensi</span>
           </NuxtLink>
+
+          <NuxtLink
+            to="/guru/absensi-kamera"
+            @click="isSidebarOpen = false"
+            class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors"
+            :class="route.path.startsWith('/guru/absensi-kamera') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'"
+          >
+            📷 <span>Absensi Kamera</span>
+          </NuxtLink>
         </nav>
       </div>
 
