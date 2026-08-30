@@ -49,8 +49,8 @@ async def recognize_face(
         valid_students = []
 
         # SESUAIKAN PATH INI DENGAN FOLDER STORAGE LARAVEL ANDA
-        STORAGE_DIR = "C:/Users/adria/Documents/data vai/web/absensi-sekolah/storage/app/public/" 
-        # STORAGE_DIR = "/var/www/absensi-sekolah/laravel-absensi-backend/storage/app/public/"
+        # STORAGE_DIR = "C:/Users/adria/Documents/data vai/web/absensi-sekolah/storage/app/public/" 
+        STORAGE_DIR = "/var/www/absensi-sekolah/laravel-absensi-backend/storage/app/public/"
         
         for student in students_list:
             if not student.get("face_image_path"):
