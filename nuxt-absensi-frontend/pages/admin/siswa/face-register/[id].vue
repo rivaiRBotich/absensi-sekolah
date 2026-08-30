@@ -42,7 +42,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-
+const config = useRuntimeConfig()
 definePageMeta({ layout: 'admin' })
 
 const route = useRoute()
@@ -64,7 +64,7 @@ let mediaStream = null
 // Ambil detail siswa
 const fetchStudentDetail = async () => {
   try {
-    const res = await $fetch(`${config.public.apiBase}/admin/siswa`, {
+    const res = await $fetch(`${config.public.apiBase}/admin/students`, {
       headers: { Authorization: `Bearer ${token.value}` }
     })
     student.value = res.find(s => s.id == studentId)
