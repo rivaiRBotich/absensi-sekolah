@@ -68,7 +68,7 @@
           <div class="w-full aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center">
             <img 
               v-if="detectedStudent?.face_image_path" 
-              :src="`${config.public.apiBase}/storage/${detectedStudent.face_image_path}`" 
+              :src="`/storage/${detectedStudent.face_image_path}`" 
               alt="Foto Siswa Terdeteksi" 
               class="w-full h-full object-cover" 
             />
