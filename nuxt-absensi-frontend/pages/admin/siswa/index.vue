@@ -215,7 +215,7 @@
         <div class="w-full aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center">
           <img 
             v-if="activeStudent?.face_image_path" 
-            :src="`${config.public.apiBase}/storage/${activeStudent.face_image_path}`" 
+            :src="`/storage/${activeStudent.face_image_path}`" 
             alt="Foto Wajah" 
             class="w-full h-full object-cover" 
           />
