@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Student;
 use App\Models\Attendance;
 use App\Models\Tenant;
+use App\Models\WhatsappQueue;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -149,6 +150,8 @@ class AttendanceController extends Controller
 
         if ($result['tipe'] === 'masuk') {
             $this->sendWhatsAppNotification($student, 'Hadir via RFID');
+        }elseif ($result['tipe'] === 'pulang') {
+            $this->sendWhatsAppNotification($student, 'Pulang via RFID');
         }
 
         return response()->json([
@@ -193,7 +196,9 @@ class AttendanceController extends Controller
         }
 
         if ($result['tipe'] === 'masuk') {
-            $this->sendWhatsAppNotification($student, 'Hadir via Wajah');
+            $this->sendWhatsAppNotification($student, 'Hadir via deteksi Wajah');
+        }elseif ($result['tipe'] === 'pulang') {
+            $this->sendWhatsAppNotification($student, 'Pulang via deteksi wajah');
         }
 
         return response()->json(['message' => $result['message']]);
@@ -418,15 +423,14 @@ class AttendanceController extends Controller
     private function sendWhatsAppNotification($student, $method)
     {
         if (empty($student->parent_phone)) {
-            return;
+        return;
         }
 
-        Http::withHeaders([
-            'Authorization' => 'Bearer ganti-dengan-token-rahasia'
-        ])->post('http://localhost:3010/send-message', [
+        \App\Models\WhatsappQueue::create([
             'target'  => $student->parent_phone,
             'message' => "Halo, siswa {$student->name} telah melakukan absensi ({$method}) pada jam " . now()->format('H:i:s'),
-        ]);
+            'status'  => 'pending',
+        ]); 
     }
 
     public function summary(Request $request)
@@ -493,16 +497,89 @@ class AttendanceController extends Controller
         ]);
     }
 
+    private function getSummaryData(Request $request): array
+    {
+        $user = Auth::user();
+        $tenantId = $user->tenant_id ?? null;
+
+        if (!in_array($user->role, ['super-admin', 'school-admin', 'school-guru'])) {
+            return ['error' => 'Tidak memiliki akses.', 'code' => 403];
+        }
+
+        $teacher = \App\Models\Teacher::where('user_id', $user->id)->with('managedClass')->first();
+        $isWaliKelas = $teacher && $teacher->managedClass;
+
+        if ($user->role === 'school-guru' && !$isWaliKelas) {
+            return ['error' => 'Fitur rekap bulanan hanya untuk wali kelas.', 'code' => 403];
+        }
+
+        $period = $request->query('period', 'month'); // week | month | 6months
+        $today = now();
+
+        [$dari, $sampai] = match ($period) {
+            'week'    => [$today->copy()->startOfWeek(), $today->copy()->endOfWeek()],
+            '6months' => [$today->copy()->subMonths(6)->startOfDay(), $today->copy()->endOfDay()],
+            default   => [$today->copy()->startOfMonth(), $today->copy()->endOfMonth()],
+        };
+
+        $classId = $request->query('class_id');
+
+        // Wali kelas dipaksa hanya lihat kelasnya sendiri
+        if ($user->role === 'school-guru' && $isWaliKelas) {
+            $classId = $teacher->managedClass->id;
+        }
+
+        $students = Student::with('schoolClass')
+            ->when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
+            ->when($classId, fn($q) => $q->where('class_id', $classId))
+            ->get();
+
+        $data = $students->map(function ($student) use ($dari, $sampai) {
+            $counts = Attendance::where('siswa_id', $student->id)
+                ->whereBetween('tanggal', [$dari->toDateString(), $sampai->toDateString()])
+                ->selectRaw('status, count(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status');
+
+            return [
+                'siswa_id' => $student->id,
+                'nama'     => $student->name,
+                'kelas'    => $student->schoolClass->name ?? '-',
+                'hadir'    => $counts['hadir'] ?? 0,
+                'telat'    => $counts['telat'] ?? 0,
+                'izin'     => $counts['izin'] ?? 0,
+                'sakit'    => $counts['sakit'] ?? 0,
+                'alpha'    => $counts['alpha'] ?? 0,
+            ];
+        });
+
+        return [
+            'periode'       => ['dari' => $dari->toDateString(), 'sampai' => $sampai->toDateString(), 'label' => $period],
+            'is_wali_kelas' => $isWaliKelas,
+            'data'          => $data,
+        ];
+    }
+
     public function exportSummaryExcel(Request $request)
     {
         $summaryData = $this->getSummaryData($request); // refactor logic 'summary()' di atas jadi method terpisah, lihat catatan di bawah
+        $result = $this->getSummaryData($request);
+
+        if (isset($result['error'])) {
+            return response()->json(['message' => $result['error']], $result['code']);
+        }
         return Excel::download(new \App\Exports\AttendanceSummaryExport($summaryData['data']), 'rekap-siswa-' . now()->format('Y-m-d_His') . '.xlsx');
     }
 
     public function exportSummaryPdf(Request $request)
     {
-        $summaryData = $this->getSummaryData($request);
-        $pdf = Pdf::loadView('exports.attendance-summary-pdf', $summaryData);
+        $result = $this->getSummaryData($request);
+
+        if (isset($result['error'])) {
+            return response()->json(['message' => $result['error']], $result['code']);
+        }
+
+        $pdf = Pdf::loadView('exports.attendance-summary-pdf', $result);
         return $pdf->download('rekap-siswa-' . now()->format('Y-m-d_His') . '.pdf');
     }
 }
