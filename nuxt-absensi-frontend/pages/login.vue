@@ -40,13 +40,13 @@
           />
         </div>
 
-        <div class="flex items-center justify-between text-sm">
+        <!-- <div class="flex items-center justify-between text-sm">
           <label class="flex items-center text-gray-600 cursor-pointer">
             <input type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-2" />
             Ingat Saya
           </label>
           <a href="#" class="text-blue-600 hover:underline">Lupa Password?</a>
-        </div>
+        </div> -->
 
         <button
           type="submit"
@@ -65,6 +65,7 @@
 definePageMeta({
   layout: false // Tidak menggunakan layout default
 })
+
 const config = useRuntimeConfig()  
 const form = ref({
   email: '',
@@ -78,47 +79,53 @@ const handleLogin = async () => {
   loading.value = true
   errorMessage.value = ''
   
-  try {
-    // 1. Tembak API Login ke Backend Laravel
-    const response = await $fetch(`${config.public.apiBase}/login`, {
-    //const response = await $fetch('https://chose-connector-likelihood-question.trycloudflare.com/api/login', {
-      method: 'POST',
-      body: {
-        email: form.value.email,
-        password: form.value.password
+    try {
+      // 1. Tembak API Login ke Backend Laravel
+      const response = await $fetch(`${config.public.apiBase}/login`, {
+      //const response = await $fetch('https://chose-connector-likelihood-question.trycloudflare.com/api/login', {
+        method: 'POST',
+        body: {
+          email: form.value.email,
+          password: form.value.password
+        }
+      })
+
+       // Session cookie: tanpa maxAge/expires -> otomatis hilang saat browser ditutup
+      const tokenCookie = useCookie('token', {
+        sameSite: 'lax',
+        secure: true
+      })
+      const userCookie = useCookie('user', {
+        sameSite: 'lax',
+        secure: true
+      })
+
+      tokenCookie.value = response.access_token
+      userCookie.value = response.user
+
+      // 3. Ambil array role dari response Laravel (Spatie)
+      const userRoles = response.user.roles || []
+
+      // 4. Pengecekan Role & Redirect Dinamis
+      if (userRoles.includes('super-admin')) {
+        // Jika Super Admin -> Ke Dashboard Super Admin
+        await navigateTo('/superadmin/dashboard')
+      } else if (userRoles.includes('school-admin')) {
+        // Jika Admin Sekolah -> Ke Dashboard Admin Sekolah
+        await navigateTo('/admin')
+      } else if (userRoles.includes('school-guru') || userRoles.includes('homeroom-teacher')) {
+        // Jika Guru -> Ke Dashboard Guru
+        await navigateTo('/guru')
+      } else {
+        // Fallback untuk role lain / siswa
+        await navigateTo('/absen')
       }
-    })
 
-    // 2. Simpan Access Token & Data User ke Cookie Nuxt 3
-    const tokenCookie = useCookie('token', { maxAge: 60 * 60 * 24 * 7 }) // Expire 7 hari
-    const userCookie = useCookie('user', { maxAge: 60 * 60 * 24 * 7 })
-    
-    tokenCookie.value = response.access_token
-    userCookie.value = response.user
-
-    // 3. Ambil array role dari response Laravel (Spatie)
-    const userRoles = response.user.roles || []
-
-    // 4. Pengecekan Role & Redirect Dinamis
-    if (userRoles.includes('super-admin')) {
-      // Jika Super Admin -> Ke Dashboard Super Admin
-      await navigateTo('/superadmin/dashboard')
-    } else if (userRoles.includes('school-admin')) {
-      // Jika Admin Sekolah -> Ke Dashboard Admin Sekolah
-      await navigateTo('/admin')
-    } else if (userRoles.includes('school-guru') || userRoles.includes('homeroom-teacher')) {
-      // Jika Guru -> Ke Dashboard Guru
-      await navigateTo('/guru')
-    } else {
-      // Fallback untuk role lain / siswa
-      await navigateTo('/absen')
-    }
-
-  } catch (error) {
-    // Tangkap error jika email/password salah atau server mati
-    errorMessage.value = error.data?.message || 'Gagal masuk. Periksa kembali email dan password Anda.'
-  } finally {
-    loading.value = false
-  }
+    } catch (error) {
+      // Tangkap error jika email/password salah atau server mati
+      errorMessage.value = error.data?.message || 'Gagal masuk. Periksa kembali email dan password Anda.'
+    } finally { 
+      loading.value = false
+      }
 }
 </script>
